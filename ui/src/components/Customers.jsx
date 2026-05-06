@@ -1,5 +1,5 @@
 import { useState } from 'react';
-const API_URL = "http://localhost:8000";
+const API_URL = "http://localhost:8001";
 
 export default function Customers({ customers, orders, onUpdate, userRole }) {
   const [showAdd, setShowAdd] = useState(false);

@@ -1,5 +1,6 @@
 import { useState } from 'react';
-const API_URL = "http://localhost:8000";
+import { VATBreakdown } from './VATBreakdown';
+const API_URL = "http://localhost:8001";
 
 export default function CreateOrder({ customers, products, onOrderCreated }) {
   const [customerId, setCustomerId] = useState('');
@@ -23,7 +24,7 @@ export default function CreateOrder({ customers, products, onOrderCreated }) {
       const data = await res.json();
       if (res.ok) {
         const invItems = items.map(item => { const p = products.find(p => p.id === Number(item.productId)); return { name: p.name, qty: item.qty, subtotal: p.price * item.qty }; });
-        setInvoice({ orderId: data.order_id, customer: customers.find(c => c.id === Number(customerId)).name, items: invItems, total: data.total_amount });
+        setInvoice({ orderId: data.order_id, customer: customers.find(c => c.id === Number(customerId)).name, items: invItems, total: data.total_amount, raw_data: data });
         onOrderCreated();
       } else { setError(data.detail || 'เกิดข้อผิดพลาด'); }
     } catch { setError('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้'); }
@@ -88,6 +89,10 @@ export default function CreateOrder({ customers, products, onOrderCreated }) {
               <span className="invoice-total-value">฿{invoice.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
             </div>
           </div>
+        </div>
+
+        <div className="no-print">
+          <VATBreakdown result={invoice.raw_data} />
         </div>
       </div>
     );

@@ -6,8 +6,9 @@ import Products from './components/Products'
 import OrderHistory from './components/OrderHistory'
 import Customers from './components/Customers'
 import Login from './components/Login'
+import StockHistory from './components/StockHistory'
 
-const API_URL = "http://localhost:8000";
+const API_URL = "http://localhost:8001";
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('token'));
@@ -98,6 +99,7 @@ function App() {
       case 'products': return <Products products={products} onUpdate={fetchData} />;
       case 'orders': return <OrderHistory orders={orders} customers={customers} onOrderUpdated={fetchData} />;
       case 'customers': return <Customers customers={customers} orders={orders} userRole={userRole} onUpdate={fetchData} />;
+      case 'stock-history': return <StockHistory />;
       default: return <Dashboard orders={orders} products={products} />;
     }
   };
