@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field, field_validator
+from datetime import datetime
 
 
 # ── Request ───────────────────────────────────────────────────────────────────
@@ -43,9 +44,39 @@ class CustomerCreate(BaseModel):
 class CreateOrderResponse(BaseModel):
     order_id:     int
     invoice_id:   int
+    subtotal:     float  
+    vat_rate:     float
+    vat_amount:   float   
     total_amount: float
     order_status: str
 
+
+
+class StockMovementResponse(BaseModel):
+    id:            int
+    product_id:    int
+    product_name:  str
+    movement_type: str
+    qty:           int
+    qty_before:    int
+    qty_after:     int
+    order_id:      int | None
+    note:          str | None
+    created_at:    datetime
+ 
+    class Config:
+        from_attributes = True
+ 
+ 
+class StockMovementListResponse(BaseModel):
+    total:   int
+    items:   list[StockMovementResponse]
+ 
+# ── Stock Adjust (ปรับสต็อกด้วยมือ) ─────────────────────────────────────────
+class StockAdjustRequest(BaseModel):
+    product_id: int = Field(..., gt=0)
+    qty:        int = Field(..., description="จำนวนที่เพิ่ม (บวก) หรือลด (ลบ)")
+    note:       str | None = Field(None, max_length=500)
 
 # ── Error detail ──────────────────────────────────────────────────────────────
 

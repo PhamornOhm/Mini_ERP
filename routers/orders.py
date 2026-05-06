@@ -58,6 +58,9 @@ async def create_order(
         invoice_id=result.invoice_id,
         total_amount=result.total_amount,
         order_status=result.order_status,
+        subtotal=result.subtotal,
+        vat_rate=result.vat_rate,
+        vat_amount=result.vat_amount,
     )
 
 from schemas import UpdateOrderStatusRequest
@@ -77,6 +80,9 @@ async def update_order_status(
             invoice_id=result.invoice_id,
             total_amount=result.total_amount,
             order_status=result.order_status,
+            subtotal=result.subtotal,
+            vat_rate=result.vat_rate,
+            vat_amount=result.vat_amount,
         )
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc))

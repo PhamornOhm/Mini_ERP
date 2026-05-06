@@ -1,5 +1,5 @@
 import { useState } from 'react';
-const API_URL = "http://localhost:8000";
+const API_URL = "http://localhost:8001";
 
 export default function OrderHistory({ orders, customers, onOrderUpdated }) {
   const [filterStatus, setFilterStatus] = useState('ALL');

@@ -9,6 +9,7 @@ from database import Base, engine
 from routers.orders import router as orders_router
 from routers.ui_routes import router as ui_router
 from routers.auth import router as auth_router
+from routers.stocks import router as stocks_router
 # ── Logging ───────────────────────────────────────────────────────────────────
 logging.basicConfig(
     level=logging.INFO,
@@ -44,6 +45,7 @@ def create_app() -> FastAPI:
     app.include_router(products_router)
     app.include_router(customers_router)
     app.include_router(audit_router)
+    app.include_router(stocks_router)
 
     # ── Startup: create tables (use Alembic migrations in production) ─────────
     @app.on_event("startup")
@@ -77,3 +79,8 @@ app = create_app()
 @app.get("/health", tags=["Health"])
 async def health_check() -> dict:
     return {"status": "ok"}
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8001)

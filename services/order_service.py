@@ -20,9 +20,11 @@ logger = logging.getLogger(__name__)
 class OrderResult:
     order_id:     int
     invoice_id:   int
+    subtotal:     float      
+    vat_rate:     float      
+    vat_amount:   float   
     total_amount: float
     order_status: str
-
 
 class OrderService:
     def __init__(self, db: AsyncSession):
@@ -67,16 +69,27 @@ class OrderService:
                     "unit_price": product.price,
                 })
 
-            # ── 3. Deduct stock & trigger email if low ────────────────────────
-            from email_service import send_low_stock_email
-            for li in line_items:
-                await self._stocks.deduct(li["stock"], li["qty"])
-                new_qty = li["stock"].quantity - li["qty"]
-                if new_qty <= 5:
-                    send_low_stock_email(li["product"].name, new_qty)
-
-            # ── 4. Create Order ───────────────────────────────────────────────
+            # ── 3. Create Order ───────────────────────────────────────────────
             order = await self._orders.create_order(payload.customer_id)
+
+            # ── 4. Deduct stock & trigger email if low ────────────────────────
+            for li in line_items:
+                qty_before = li["stock"].quantity
+                await self._stocks.deduct(li["stock"], li["qty"])
+                qty_after = li["stock"].quantity
+
+                # บันทึกประวัติสต็อก
+                from repositories.stock_movement_repo import StockMovementRepository
+                from models import StockMovementType
+                await StockMovementRepository(self._db).create(
+                    product_id=li["product"].id,
+                    movement_type=StockMovementType.OUT,
+                    qty=-li["qty"],
+                    qty_before=qty_before,
+                    qty_after=qty_after,
+                    order_id=order.id,
+                    note=f"ตัดสต็อกจากออเดอร์ #{order.id}",
+                )
 
             # ── 5. Create OrderItems & accumulate total ───────────────────────
             total_amount = 0.0
@@ -111,6 +124,9 @@ class OrderService:
             invoice_id=invoice.id,
             total_amount=total_amount,
             order_status=order.status.value,
+            subtotal=invoice.subtotal,       
+            vat_rate=invoice.vat_rate,       
+            vat_amount=invoice.vat_amount,
         )
 
     async def update_order_status(self, order_id: int, status: str, username: str) -> OrderResult:
@@ -149,4 +165,7 @@ class OrderService:
                 invoice_id=invoice.id if invoice else 0,
                 total_amount=invoice.total_amount if invoice else 0.0,
                 order_status=order.status.value,
+                subtotal=invoice.subtotal if invoice else 0.0,
+                vat_rate=invoice.vat_rate if invoice else 0.0,
+                vat_amount=invoice.vat_amount if invoice else 0.0,
             )

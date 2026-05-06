@@ -19,6 +19,14 @@ class OrderStatus(str, enum.Enum):
     DELIVERED = "DELIVERED"
     CANCELLED = "CANCELLED"
 
+class StockMovementType(str, enum.Enum):
+    IN       = "IN"        # เติมสต็อก
+    OUT      = "OUT"       # ตัดสต็อก (จากออเดอร์)
+    ADJUST   = "ADJUST"    # ปรับสต็อกด้วยมือ
+    RETURN   = "RETURN"    # คืนสต็อก (จากยกเลิกออเดอร์)
+ 
+ 
+
 
 # ── Models ───────────────────────────────────────────────────────────────────
 
@@ -45,6 +53,7 @@ class Product(Base):
     id:    Mapped[int]   = mapped_column(BigInteger, primary_key=True, index=True)
     name:  Mapped[str]   = mapped_column(String(255), nullable=False)
     price: Mapped[float] = mapped_column(Float, nullable=False)
+    movements: Mapped[list["StockMovement"]] = relationship("StockMovement", back_populates="product")
 
     stock:       Mapped["Stock"]           = relationship("Stock", back_populates="product", uselist=False)
     order_items: Mapped[list["OrderItem"]] = relationship("OrderItem", back_populates="product")
@@ -100,6 +109,9 @@ class Invoice(Base):
     order_id:     Mapped[int]      = mapped_column(
         BigInteger, ForeignKey("orders.id", ondelete="CASCADE"), unique=True, nullable=False,
     )
+    subtotal:     Mapped[float] = mapped_column(Float, nullable=False)
+    vat_rate:     Mapped[float] = mapped_column(Float, nullable=False, default=0.07)
+    vat_amount:   Mapped[float] = mapped_column(Float, nullable=False)
     total_amount: Mapped[float]    = mapped_column(Float, nullable=False)
     created_at:   Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -119,3 +131,22 @@ class AuditLog(Base):
         DateTime(timezone=True),
         server_default=text("NOW()"),
     )
+
+class StockMovement(Base):
+    """บันทึกทุกการเคลื่อนไหวของสต็อก"""
+    __tablename__ = "stock_movements"
+ 
+    id:           Mapped[int]               = mapped_column(BigInteger, primary_key=True, index=True)
+    product_id:   Mapped[int]               = mapped_column(BigInteger, ForeignKey("products.id"), nullable=False)
+    movement_type: Mapped[StockMovementType] = mapped_column(Enum(StockMovementType), nullable=False)
+    qty:          Mapped[int]               = mapped_column(Integer, nullable=False)  # + คือเพิ่ม, - คือลด
+    qty_before:   Mapped[int]               = mapped_column(Integer, nullable=False)  # สต็อกก่อนเปลี่ยน
+    qty_after:    Mapped[int]               = mapped_column(Integer, nullable=False)  # สต็อกหลังเปลี่ยน
+    order_id:     Mapped[int | None]        = mapped_column(BigInteger, ForeignKey("orders.id"), nullable=True)
+    note:         Mapped[str | None]        = mapped_column(String(500), nullable=True)
+    created_at:   Mapped[datetime]          = mapped_column(
+        DateTime(timezone=True), server_default=text("NOW()"),
+    )
+ 
+    product: Mapped["Product"] = relationship("Product", back_populates="movements")
+    order:   Mapped["Order | None"] = relationship("Order")

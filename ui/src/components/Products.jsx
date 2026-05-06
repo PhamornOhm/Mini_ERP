@@ -1,10 +1,15 @@
 import { useState } from 'react';
-const API_URL = "http://localhost:8000";
+const API_URL = "http://localhost:8001";
 
 export default function Products({ products, onUpdate }) {
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ name: '', price: '', initial_stock: '' });
   const [error, setError] = useState('');
+  
+  // New Modal States
+  const [stockModal, setStockModal] = useState({ show: false, productId: null, productName: '', value: '' });
+  const [priceModal, setPriceModal] = useState({ show: false, productId: null, productName: '', value: '' });
+
   const token = () => localStorage.getItem('token');
 
   const addProduct = async (e) => {
@@ -15,16 +20,24 @@ export default function Products({ products, onUpdate }) {
     } catch { setError('เชื่อมต่อล้มเหลว'); }
   };
 
-  const editPrice = async (id, old) => {
-    const v = prompt("ราคาใหม่:", old); if (!v) return;
-    const n = parseFloat(v); if (isNaN(n) || n <= 0) { alert("ราคาไม่ถูกต้อง"); return; }
-    try { const res = await fetch(`${API_URL}/products/${id}/price`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token()}` }, body: JSON.stringify({ price: n }) }); if (res.ok) onUpdate?.(); else alert("ไม่สามารถแก้ไขได้"); } catch { alert("เชื่อมต่อล้มเหลว"); }
+  const handleEditPrice = async (e) => {
+    e.preventDefault();
+    const n = parseFloat(priceModal.value);
+    if (isNaN(n) || n <= 0) return;
+    try {
+      const res = await fetch(`${API_URL}/products/${priceModal.productId}/price`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token()}` }, body: JSON.stringify({ price: n }) });
+      if (res.ok) { setPriceModal({ ...priceModal, show: false }); onUpdate?.(); }
+    } catch { console.error("Failed to edit price"); }
   };
 
-  const addStock = async (id) => {
-    const v = prompt("จำนวนที่เพิ่ม:"); if (!v) return;
-    const n = parseInt(v); if (isNaN(n) || n <= 0) { alert("จำนวนไม่ถูกต้อง"); return; }
-    try { const res = await fetch(`${API_URL}/products/${id}/stock`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token()}` }, body: JSON.stringify({ quantity_added: n }) }); if (res.ok) onUpdate?.(); else alert("ไม่สามารถเพิ่มได้"); } catch { alert("เชื่อมต่อล้มเหลว"); }
+  const handleAddStock = async (e) => {
+    e.preventDefault();
+    const n = parseInt(stockModal.value);
+    if (isNaN(n) || n <= 0) return;
+    try {
+      const res = await fetch(`${API_URL}/products/${stockModal.productId}/stock`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token()}` }, body: JSON.stringify({ quantity_added: n }) });
+      if (res.ok) { setStockModal({ ...stockModal, show: false }); onUpdate?.(); }
+    } catch { console.error("Failed to add stock"); }
   };
 
   return (
@@ -62,8 +75,8 @@ export default function Products({ products, onUpdate }) {
                     <td>{out ? <span className="badge badge-cancelled">หมด</span> : low ? <span className="badge badge-pending">ใกล้หมด</span> : <span className="badge badge-confirmed">พร้อมขาย</span>}</td>
                     <td>
                       <div style={{ display: 'flex', gap: '0.375rem' }}>
-                        <button className="btn btn-outline" style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }} onClick={() => editPrice(p.id, p.price)}>✏️ ราคา</button>
-                        <button className="btn btn-primary" style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }} onClick={() => addStock(p.id)}>📦 เติม</button>
+                        <button className="btn btn-outline" style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }} onClick={() => setPriceModal({ show: true, productId: p.id, productName: p.name, value: p.price })}>✏️ ราคา</button>
+                        <button className="btn btn-primary" style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }} onClick={() => setStockModal({ show: true, productId: p.id, productName: p.name, value: '' })}>📦 เติม</button>
                       </div>
                     </td>
                   </tr>
@@ -75,6 +88,72 @@ export default function Products({ products, onUpdate }) {
           </table>
         </div>
       </div>
+
+      {/* Modern Price Modal */}
+      {priceModal.show && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h2>✏️ แก้ไขราคา: {priceModal.productName}</h2>
+              <button className="modal-close" onClick={() => setPriceModal({ ...priceModal, show: false })}>✕</button>
+            </div>
+            <form onSubmit={handleEditPrice}>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label>ราคาใหม่ (บาท)</label>
+                  <input 
+                    type="number" 
+                    step="0.01" 
+                    className="form-control" 
+                    autoFocus 
+                    required 
+                    value={priceModal.value} 
+                    onChange={e => setPriceModal({ ...priceModal, value: e.target.value })} 
+                  />
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-outline" onClick={() => setPriceModal({ ...priceModal, show: false })}>ยกเลิก</button>
+                <button type="submit" className="btn btn-primary">บันทึกการแก้ไข</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modern Stock Modal */}
+      {stockModal.show && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h2>📦 เติมสต็อก: {stockModal.productName}</h2>
+              <button className="modal-close" onClick={() => setStockModal({ ...stockModal, show: false })}>✕</button>
+            </div>
+            <form onSubmit={handleAddStock}>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label>จำนวนที่ต้องการเพิ่ม (ชิ้น)</label>
+                  <input 
+                    type="number" 
+                    min="1" 
+                    className="form-control" 
+                    autoFocus 
+                    required 
+                    placeholder="ใส่จำนวนสินค้า..." 
+                    value={stockModal.value} 
+                    onChange={e => setStockModal({ ...stockModal, value: e.target.value })} 
+                  />
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-outline" onClick={() => setStockModal({ ...stockModal, show: false })}>ยกเลิก</button>
+                <button type="submit" className="btn btn-primary">ยืนยันการเติม</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
